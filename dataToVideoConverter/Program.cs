@@ -9,17 +9,17 @@ namespace DTV {
         private readonly int width;
         private readonly int heighth;
         private Bitmap canvas;
-        private readonly int pixelSize = 5;
+        private readonly int pixelSize;
         private string pathToSource;
         private string pathToSave;
         private int byteCount=2;
-        public Converter(string saveBMP,string source,int bitC, int h, int w)
+        public Converter(string saveBMP,string source,int byteCount, int h, int w,int pixelSize)
         {
-            byteCount = bitC > 3 ? byteCount : bitC;
+            this.pixelSize = pixelSize;
+            this.byteCount = byteCount > 3 ? byteCount : byteCount;
             canvas = new Bitmap(w, h);
             pathToSource = source;
             pathToSave = saveBMP;
-            bitC = 2;
             width = w;
             heighth = h;
         }
@@ -28,6 +28,8 @@ namespace DTV {
             BinaryReader reader = new BinaryReader(File.OpenRead(pathToSource));
             List<string> data = new List<string>();
             StringBuilder stringBuilder = new StringBuilder();
+            FileInfo file = new FileInfo(pathToSource);
+            data.Add($"#{BitConverter.ToString(Encoding.Default.GetBytes(file.Name.Substring(file.Name.IndexOf(".") + 1))).Replace("-", "")}");//----------------------
             for(int amountOfBytes = 0;amountOfBytes<16; amountOfBytes+=2) {
                 data.Add($"#{reader.BaseStream.Length.ToString().PadLeft(16, '0').Substring(amountOfBytes,2).PadRight(4,'0')}");
             }
@@ -46,8 +48,7 @@ namespace DTV {
         }
         public void Encode() {
             if (!IsValid(pathToSource)) {
-                Console.WriteLine("Provided path is invalid");
-                return; 
+                throw new FileNotFoundException();
             }
             var binData = ProvideBinaryData();
             int count = -1;
@@ -83,10 +84,12 @@ namespace DTV {
             }
             return bytes.ToArray();
         }
-        private string GetExtention() { return ""; }
+        private string GetExtention(Bitmap bmp) { 
+            Color extPixel = bmp.GetPixel(0, 0); 
+            return new string(new byte[] { extPixel.R, extPixel.G, extPixel.B }.Select(it => (char)it).ToArray());}
         private long RetrieveAmountOfBytes(Bitmap bmp) {
             string temp = "";
-            for (int j = 0; j < 8* pixelSize; j += pixelSize)
+            for (int j = pixelSize; j < 9* pixelSize; j += pixelSize)
             {
                 temp += bmp.GetPixel(j, 0).R.ToString("X").PadLeft(2, '0');
             }
@@ -94,15 +97,14 @@ namespace DTV {
         }
         public void Decode(string pathToSaveDecodedData) {
             var saveDir = Directory.CreateDirectory($"{pathToSaveDecodedData}\\Decoded");
-            StreamWriter writer = new StreamWriter(File.Open($"{saveDir.FullName}\\{DateTime.Now.ToString("HH-mm-ss-fff")}.txt", FileMode.OpenOrCreate,FileAccess.ReadWrite,FileShare.ReadWrite));
+            Bitmap bitmap = new Bitmap(pathToSave);
+            StreamWriter writer = new StreamWriter(File.Open($"{saveDir.FullName}\\{DateTime.Now.ToString("HH-mm-ss-fff")}.{GetExtention(bitmap)}", FileMode.OpenOrCreate,FileAccess.ReadWrite,FileShare.ReadWrite));
             Color color;
             string bytesToWriteAsString="";
             StringBuilder SB = new StringBuilder();
-            List<byte> listOfBytes = new List<byte>();
-            Bitmap bitmap = new Bitmap(pathToSave);
             int countOfWrittenBytes = 0;
             long countOfBytesToRead = RetrieveAmountOfBytes(bitmap);
-            int i = 8* pixelSize;
+            int i = 9* pixelSize;
             for (int j = 0; j < heighth - pixelSize; j += pixelSize)
             {
                 for (; i < width - pixelSize; i += pixelSize)
@@ -110,7 +112,7 @@ namespace DTV {
                     if (countOfWrittenBytes < countOfBytesToRead) {
                         color = bitmap.GetPixel(i, j);
                         bytesToWriteAsString += color.R.ToString("X2");
-                        if (byteCount == 2) {
+                        if (byteCount == 2|| byteCount == 3) {
                             bytesToWriteAsString += color.G.ToString("X2");
                         }
                         if (byteCount == 3) {
@@ -132,10 +134,10 @@ namespace DTV {
     }
     class Program {
         public static void Main(string[] args) {
-            Converter converter = new Converter("C:\\Users\\xbox0\\Desktop\\dataToVideo\\dataSave.bmp", "C:\\Users\\xbox0\\Desktop\\dataToVideo\\data.txt",2,1080,1920);
+            Converter converter = new Converter(,,3,1080,1920,1);
             converter.Encode();
-            converter.Decode("C:\\Users\\xbox0\\Desktop\\dataToVideo");
-            Console.Read();
+            converter.Decode();
+            //Console.Read();
         }
     }
 }
