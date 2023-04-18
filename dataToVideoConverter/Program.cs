@@ -132,7 +132,7 @@ namespace DTV {
     }
     class Program {
         public static void Main(string[] args) {
-            Converter converter = new Converter("C:\\Users\\xbox0\\Desktop\\dataToVideo\\dataSave.bmp", "C:\\Users\\xbox0\\Desktop\\dataToVideo\\data.txt",2,1080,1920);
+            Converter converter = new Converter(,,2,1080,1920);
             converter.Encode();
             converter.Decode("C:\\Users\\xbox0\\Desktop\\dataToVideo");
             Console.Read();
