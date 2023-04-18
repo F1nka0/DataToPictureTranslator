@@ -1,0 +1,11 @@
+{
+  "version": 2,
+  "dgSpecHash": "Dw5FRG0pBhoZ18irKPSuQnPUM2WX5NQ/OQzl5DRo9EUl2igq+jTgS1GqB4nNDR5jhyQHRc7AXZ+Y4SYP4IU3xA==",
+  "success": true,
+  "projectFilePath": "C:\\Users\\xbox0\\Desktop\\dataToVideo\\dataToVideoConverter\\dataToVideoConverter\\dataToVideoConverter.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\xbox0\\.nuget\\packages\\microsoft.win32.systemevents\\7.0.0\\microsoft.win32.systemevents.7.0.0.nupkg.sha512",
+    "C:\\Users\\xbox0\\.nuget\\packages\\system.drawing.common\\7.0.0\\system.drawing.common.7.0.0.nupkg.sha512"
+  ],
+  "logs": []
+}
