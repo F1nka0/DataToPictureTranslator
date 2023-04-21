@@ -5,31 +5,34 @@ using System.IO;
 using System.Text;
 
 namespace DTV {
-    class Converter {
+    class Translator {
         private readonly int width;
         private readonly int heighth;
         private Bitmap canvas;
         private readonly int pixelSize;
-        private string pathToSource;
-        private string pathToSave;
         private int byteCount=2;
-        public Converter(string saveBMP,string source,int byteCount, int h, int w,int pixelSize)
+        /// <param name="byteCount">Amount of data stored per one pixelSize, has to lie in the range of 1 to 3</param>
+        /// <param name="h">BMP canvas height</param>
+        /// <param name="w">BMP canvas width</param>
+        /// <param name="pixelSize">Size of one data storage unit</param>
+        public Translator(int byteCount, int w, int h, int pixelSize)
         {
+            if (byteCount<1|| byteCount > 3) { throw new Exception("byteCount must be within range of 1 to 3"); }
+            if (h<=0|| w <= 0) { throw new Exception("heighth and width must be positive"); }
+            if (pixelSize < 1|| pixelSize>w) { throw new Exception("pixelSize must be greater than 0 and less than the width of BMP canvas"); }
             this.pixelSize = pixelSize;
-            this.byteCount = byteCount > 3 ? byteCount : byteCount;
+            this.byteCount = byteCount;
             canvas = new Bitmap(w, h);
-            pathToSource = source;
-            pathToSave = saveBMP;
             width = w;
             heighth = h;
         }
-        private bool IsValid(string path) => File.Exists(path);
-        public List<string> ProvideBinaryData() {
+        private List<string> ProvideBinaryData(string pathToSource) {
+            if (!File.Exists(pathToSource)) { throw new FileNotFoundException(); }
             BinaryReader reader = new BinaryReader(File.OpenRead(pathToSource));
             List<string> data = new List<string>();
             StringBuilder stringBuilder = new StringBuilder();
             FileInfo file = new FileInfo(pathToSource);
-            data.Add($"#{BitConverter.ToString(Encoding.Default.GetBytes(file.Name.Substring(file.Name.IndexOf(".") + 1))).Replace("-", "")}");//----------------------
+            data.Add($"#{BitConverter.ToString(Encoding.Default.GetBytes(file.Name.Substring(file.Name.IndexOf(".") + 1))).Replace("-", "")}");
             for(int amountOfBytes = 0;amountOfBytes<16; amountOfBytes+=2) {
                 data.Add($"#{reader.BaseStream.Length.ToString().PadLeft(16, '0').Substring(amountOfBytes,2).PadRight(4,'0')}");
             }
@@ -40,17 +43,22 @@ namespace DTV {
                 {
                     stringBuilder.Append(reader.ReadByte().ToString("X").PadLeft(2, '0'));
                 }
+                //Console.WriteLine(stringBuilder.ToString());
                 data.Add(stringBuilder.ToString());
                 stringBuilder.Clear();
             }
             reader.Close();
             return data;
         }
-        public void Encode() {
-            if (!IsValid(pathToSource)) {
-                throw new FileNotFoundException();
-            }
-            var binData = ProvideBinaryData();
+        /// <summary>
+        /// Encode file to BMP
+        /// </summary>
+        /// <exception cref="FileNotFoundException"></exception>
+        /// <param name="saveBMP">Path to the directory, you want to save encoded data into</param>
+        /// <param name="source">Full name of data file,you want to encode</param>
+        public void Encode(string source, string saveBMP) {
+            if (!File.Exists(source)) {throw new FileNotFoundException();}
+            var binData = ProvideBinaryData(source);
             int count = -1;
             for (int i = 0; i < heighth - pixelSize; i+=pixelSize)
             {
@@ -58,15 +66,14 @@ namespace DTV {
                 {
                     count++;
                     if (count < binData.Count) {
-                        //Console.WriteLine(binData[count].PadRight(7, '0'));
                         SetChunkOfPixelsToColor(i, j, ColorTranslator.FromHtml(binData[count].PadRight(7, '0')));
                     }
                 }
-            } 
-            
-            canvas.Save(pathToSave);
+            }
+            Directory.CreateDirectory($"{saveBMP}\\EncodedBMPs");
+            canvas.Save($"{saveBMP}\\EncodedBMPs\\{DateTime.Now.ToString("HH-mm-ss-ffff")}.bmp");
         }
-        public void SetChunkOfPixelsToColor(int h,int w,Color color) {
+        private void SetChunkOfPixelsToColor(int h,int w,Color color) {
             for (int a = h; a < h + pixelSize; a++) {
                 for (int b = w; b < w+pixelSize; b++)
                 {
@@ -75,7 +82,7 @@ namespace DTV {
             }
         }
 
-        public byte[] StringToByteArray(string hex)
+        private byte[] StringToByteArray(string hex)
         {
             List<byte> bytes = new List<byte>();  
             for (int i = 0; i < byteCount*2; i+=2)
@@ -89,16 +96,21 @@ namespace DTV {
             return new string(new byte[] { extPixel.R, extPixel.G, extPixel.B }.Select(it => (char)it).ToArray());}
         private long RetrieveAmountOfBytes(Bitmap bmp) {
             string temp = "";
-            for (int j = pixelSize; j < 9* pixelSize; j += pixelSize)
-            {
-                temp += bmp.GetPixel(j, 0).R.ToString("X").PadLeft(2, '0');
-            }
+                for (int j = pixelSize; j < 9* pixelSize&& j<width; j += pixelSize)
+                {
+                    temp += bmp.GetPixel(j, 0).R.ToString("X").PadLeft(2, '0');
+                }
             return long.Parse(temp);
         }
-        public void Decode(string pathToSaveDecodedData) {
+        /// <summary>
+        /// Decodes data, previously encoded to BMP file
+        /// </summary>
+        /// <param name="pathToSaveDecodedData">Directory to save decoded data to</param>
+        public void Decode(string BMPfile,string pathToSaveDecodedData) {
+            if (!File.Exists(BMPfile)) { throw new FileNotFoundException(); }
             var saveDir = Directory.CreateDirectory($"{pathToSaveDecodedData}\\Decoded");
-            Bitmap bitmap = new Bitmap(pathToSave);
-            StreamWriter writer = new StreamWriter(File.Open($"{saveDir.FullName}\\{DateTime.Now.ToString("HH-mm-ss-fff")}.{GetExtention(bitmap)}", FileMode.OpenOrCreate,FileAccess.ReadWrite,FileShare.ReadWrite));
+            Bitmap bitmap = new Bitmap(BMPfile);
+            StreamWriter writer = new StreamWriter(File.Open($"{saveDir.FullName}\\{new FileInfo(BMPfile).Name} - {DateTime.Now.ToString("HH-mm-ss-ffff")}.{GetExtention(bitmap)}", FileMode.OpenOrCreate,FileAccess.ReadWrite,FileShare.ReadWrite));
             Color color;
             string bytesToWriteAsString="";
             StringBuilder SB = new StringBuilder();
@@ -121,7 +133,6 @@ namespace DTV {
                         foreach (byte b in StringToByteArray(bytesToWriteAsString)) {
                             SB.Append((char)b);
                         }
-                        //Console.WriteLine(bytesToWriteAsString);
                         bytesToWriteAsString = "";
                         countOfWrittenBytes+=byteCount;
                     }
@@ -134,10 +145,7 @@ namespace DTV {
     }
     class Program {
         public static void Main(string[] args) {
-            Converter converter = new Converter(,,3,1080,1920,1);
-            converter.Encode();
-            converter.Decode();
-            //Console.Read();
+            Translator translator = new Translator(2,1920,1080,10);
         }
     }
 }
