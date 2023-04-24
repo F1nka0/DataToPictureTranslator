@@ -81,24 +81,15 @@ namespace DTV {
                 }    
             }
         }
-
-        private byte[] StringToByteArray(string hex)
-        {
-            List<byte> bytes = new List<byte>();  
-            for (int i = 0; i < byteCount*2; i+=2)
-            {
-                bytes.Add(Convert.ToByte(hex.Substring(i,2), 16));
-            }
-            return bytes.ToArray();
-        }
         private string GetExtention(Bitmap bmp) { 
             Color extPixel = bmp.GetPixel(0, 0); 
             return new string(new byte[] { extPixel.R, extPixel.G, extPixel.B }.Select(it => (char)it).ToArray());}
         private long RetrieveAmountOfBytes(Bitmap bmp) {
             string temp = "";
-                for (int j = pixelSize; j < 9* pixelSize&& j<width; j += pixelSize)
+                for (int j = pixelSize; j < (9* pixelSize)&& j<width; j += pixelSize)
                 {
-                    temp += bmp.GetPixel(j, 0).R.ToString("X").PadLeft(2, '0');
+                Console.WriteLine(bmp.GetPixel(j, 1));
+                temp += bmp.GetPixel(j, 0).R.ToString("X").PadLeft(2, '0');
                 }
             return long.Parse(temp);
         }
@@ -110,9 +101,9 @@ namespace DTV {
             if (!File.Exists(BMPfile)) { throw new FileNotFoundException(); }
             var saveDir = Directory.CreateDirectory($"{pathToSaveDecodedData}\\Decoded");
             Bitmap bitmap = new Bitmap(BMPfile);
-            StreamWriter writer = new StreamWriter(File.Open($"{saveDir.FullName}\\{new FileInfo(BMPfile).Name} - {DateTime.Now.ToString("HH-mm-ss-ffff")}.{GetExtention(bitmap)}", FileMode.OpenOrCreate,FileAccess.ReadWrite,FileShare.ReadWrite));
+            BinaryWriter writer = new BinaryWriter(File.Open($"{saveDir.FullName}\\{new FileInfo(BMPfile).Name} - {DateTime.Now.ToString("HH-mm-ss-ffff")}.{GetExtention(bitmap)}", FileMode.OpenOrCreate,FileAccess.ReadWrite,FileShare.ReadWrite));
             Color color;
-            string bytesToWriteAsString="";
+            List<byte> bytesToWrite = new List<byte>();
             StringBuilder SB = new StringBuilder();
             int countOfWrittenBytes = 0;
             long countOfBytesToRead = RetrieveAmountOfBytes(bitmap);
@@ -123,29 +114,26 @@ namespace DTV {
                 {
                     if (countOfWrittenBytes < countOfBytesToRead) {
                         color = bitmap.GetPixel(i, j);
-                        bytesToWriteAsString += color.R.ToString("X2");
+                        bytesToWrite.Add(color.R);
                         if (byteCount == 2|| byteCount == 3) {
-                            bytesToWriteAsString += color.G.ToString("X2");
+                            bytesToWrite.Add(color.G);
                         }
                         if (byteCount == 3) {
-                            bytesToWriteAsString += color.B.ToString("X2");
+                            bytesToWrite.Add(color.B);
                         }
-                        foreach (byte b in StringToByteArray(bytesToWriteAsString)) {
-                            SB.Append((char)b);
-                        }
-                        bytesToWriteAsString = "";
                         countOfWrittenBytes+=byteCount;
                     }
                 }
                 i = 0;
             }
-            writer.Write(SB.ToString());
+            writer.Write(bytesToWrite.ToArray());
+            bytesToWrite.Clear();
             writer.Close();
         }
     }
     class Program {
         public static void Main(string[] args) {
-            Translator translator = new Translator(2,1920,1080,10);
+            Translator translator = new Translator(2,1920,1080,5);
         }
     }
 }
