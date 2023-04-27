@@ -21,4 +21,4 @@ the constructor, but has to lie within the range of 1 to 3.
 
 # Data integrity
 Decoded data is bytewise the same as the pre-encoded one
-![image](https://user-images.githubusercontent.com/66963865/234697521-5277f1f9-cf1b-43a2-a41b-6da4aed38837.png)
+![image](https://user-images.githubusercontent.com/66963865/234857382-63aa8267-030e-43f0-9f72-d23b7bd8fec0.png)
